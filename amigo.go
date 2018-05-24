@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/FilipNikolovski/amigo/utils"
+	"github.com/FilipNikolovski/amigo/cmd"
 )
 
 func usage() {
@@ -14,10 +14,14 @@ USAGE:
 	amigo [option] [pkg] [pkg] [...]
 COMMANDS:
 	-S		Install package
-	-Ss		Search for package
+	-G		Clone package in the current dir
+	-R		Remove package
 OPTIONS:
 	--help		Show help
 	--version	Show version
+SEE ALSO:
+	-Sh		Show sync options and usage
+	-Gh		Show get options and usage
 		`)
 }
 
@@ -31,29 +35,21 @@ func parse(args []string) (cmd string, opts []string, pkgs []string, err error) 
 		return
 	}
 
-	for _, arg := range args[1:] {
-		if utils.IsCommand(arg) {
-			switch arg {
-			case "-H", "-h":
-				arg = "--help"
-			case "-V", "-v":
-				arg = "--version"
-			default:
-				cmd = arg
-				continue
-			}
-		}
+	cmd = args[1]
 
-		if utils.IsOpt(arg) {
-			switch arg {
-			case "--help":
-				usage()
-				os.Exit(0)
-			case "--version":
-				version()
-				os.Exit(0)
-			}
+	if len(cmd) == 1 || cmd == "-H" || cmd == "-h" || cmd == "--help" {
+		usage()
+		os.Exit(0)
+	}
 
+	if cmd == "-V" || cmd == "-v" || cmd == "--version" {
+		version()
+		os.Exit(0)
+	}
+
+	for _, arg := range args[2:] {
+		if arg[0] == '-' {
+			opts = append(opts, arg)
 			continue
 		}
 
@@ -64,9 +60,21 @@ func parse(args []string) (cmd string, opts []string, pkgs []string, err error) 
 }
 
 func main() {
-	_, _, _, err := parse(os.Args)
+	command, opts, pkgs, err := parse(os.Args)
 	if err != nil {
 		usage()
 		os.Exit(0)
+	}
+
+	fmt.Printf("Command: %s Options: %+v Packages: %+v\n", command, opts, pkgs)
+	c, err := cmd.MakeCmd(command, opts, pkgs)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	err = c.Run()
+	if err != nil {
+		fmt.Println(err)
 	}
 }
